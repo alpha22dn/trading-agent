@@ -219,3 +219,4 @@ runtime/             database, backups, logs (not committed)
   anything still held when it ends gets a new exit. Every cycle checks broker holdings = trades' open quantity.
   If a buy is only partly filled when the session ends, the agent keeps the shares bought (open question).
 - The holiday list covers 2026 only. The Overview warns 30 days before it runs out.
+-sample change
