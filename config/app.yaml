@@ -1,0 +1,174 @@
+# Trading Agent — application config (everything except strategy parameters).
+# Strategy parameters live in config/strategies/<version>.yaml and change only
+# through the Learning screen (Phase 3). Values here come from the build spec.
+
+timezone: Asia/Kolkata
+
+broker:
+  # paper = PaperBroker (MVP). live = KiteBroker, which is not built yet and
+  # stays disabled until every paper-trading acceptance check passes.
+  mode: paper
+  live_enabled: false
+
+strategy:
+  active_version: momentum_v1
+
+market:
+  open: "09:15"
+  close: "15:30"
+  eod_after: "20:55"            # daily candles are final (Kite has the official NSE close); EOD run 5 min later, 21:00 (decided 2026-09-24)
+  monitor_interval_min: 1       # order monitor cadence (Phase 2)
+  exit_attach_alert_min: 5      # alert if an exit GTT is not attached within this
+
+kite:
+  # Access tokens expire at 06:00 IST the next morning.
+  token_expiry_hour: 6
+  nifty50_symbol: "NIFTY 50"
+  nifty50_token: 256265
+  historical_requests_per_sec: 2.5   # Kite limit is 3/s; stay under it
+  request_timeout_sec: 15
+  websocket: true                    # live prices from Kite's WebSocket stream in market hours (REST quote fallback)
+
+accounts:
+  - id: P30
+    name: "₹30,000 baseline"
+    capital: 30000
+    manual_edits: false
+  - id: P60
+    name: "₹60,000 manual-change testing"
+    capital: 60000
+    manual_edits: true
+  - id: P100
+    name: "₹1,00,000 baseline"
+    capital: 100000
+    manual_edits: false
+
+risk:
+  risk_per_trade_pct: 1.0
+  max_position_pct: 25.0
+  max_open_positions: 5
+  max_per_sector: 2
+  drawdown_halt_pct: 6.0
+
+universe:
+  min_traded_value_cr: 10       # 20-day average of close x volume, in ₹ crore
+  # Gate 3: P/E > 0 and P/E < min(profit growth %, this cap). Stops a one-year jump off a
+  # weak base (e.g. 2,000% growth) from letting an expensive stock through. Decided 2026-09-23.
+  valuation_growth_cap_pct: 40
+  traded_value_lookback: 20
+  results_blackout_days: 5      # trading days ahead
+  last_year_window_days: 7      # either side of last year's same-quarter result date
+  market_filter:
+    # Off since 2026-09-23 (user decision): Nifty below its 50-SMA blocked too many good signals. The Nifty
+    # status still shows on the Overview for information. true = block all new entries when Nifty < SMA.
+    enabled: false
+    index: "NIFTY 50"
+    sma_period: 50
+
+indicators:
+  # Conventions match TradingView / Kite charts (population std for Bollinger, Wilder RMA for ATR/ADX)
+  # so signals can be checked by eye. Wilder-smoothed ATR/ADX need history before they settle; earlier
+  # sessions are left empty so recently listed stocks produce no signal until they have this many sessions.
+  warmup_bars: 100
+
+seconds:
+  # 1-second bars recorded from the live stream (all Nifty 500 stocks), kept indefinitely in runtime/seconds
+  record: true
+  min_free_gb: 10             # recording pauses (with an alert) below this much free space on the drive
+
+nse500:
+  # The Nifty 500 list is downloaded from NSE every trading day after the instruments sync (09:00 / login)
+  auto_update: true
+  urls:                       # tried in order
+    - "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
+    - "https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv"
+  max_changes: 100            # more stocks in + out than this at once is not applied (alert; old list stays)
+  timeout_sec: 20
+
+results_calendar:
+  # NSE board-meeting announcements (gate 5: no results soon)
+  base_url: "https://www.nseindia.com"
+  lookback_days: 7            # daily fetch window: a week back ...
+  lookahead_days: 30          # ... to a month ahead
+  history_years: 3            # one-off history load, for last year's result dates and history scans
+  timeout_sec: 20
+  pause_sec: 1.0              # pause between NSE requests
+
+watchlist:
+  stale_after_days: 35        # warn when the Screener paste is older than this
+
+# Zerodha equity delivery (CNC) charges, from zerodha.com/charges (checked 2026-09-23).
+# Paper P&L is always reported net of these.
+charges:
+  brokerage: 0
+  stt_pct: 0.1                  # on buy and sell turnover
+  exchange_txn_pct: 0.00307     # NSE transaction charge
+  sebi_per_crore: 10
+  stamp_buy_pct: 0.015          # buy side only
+  gst_pct: 18                   # on brokerage + SEBI + transaction charges
+  dp_per_scrip_sell_day: 15.34  # incl. GST, once per stock per day it is sold
+
+# Zerodha equity intraday charges, from zerodha.com/charges (checked 2026-09-30). A CNC buy sold the same day
+# is charged as intraday (Zerodha); the paper broker re-books those shares at these rates when they are sold.
+charges_intraday:
+  brokerage_pct: 0.03           # per executed order ...
+  brokerage_max: 20             # ... or Rs 20, whichever is lower
+  stt_sell_pct: 0.025           # sell side only
+  exchange_txn_pct: 0.00307
+  sebi_per_crore: 10
+  stamp_buy_pct: 0.003          # buy side only
+  gst_pct: 18                   # on brokerage + SEBI + transaction charges (no DP charge: nothing leaves the demat)
+
+paper:
+  gtt_min_trigger_gap_pct: 0.25   # Kite: trigger must be >= 0.25% from LTP (stocks above Rs 50)
+  gtt_min_trigger_gap_abs: 0.09   # Kite: 9 paise for stocks at or below Rs 50
+  gtt_gap_price_threshold: 50
+
+data:
+  # 2 years for the historical scan + ~5 months for indicator warm-up (indicators.warmup_bars).
+  # Raising it fetches the older history once on the next candle refresh.
+  backfill_years: 2.5
+  # 1-minute bars (charts in any timeframe, research). Stored in runtime/agent_1m.db, ~2 GB a year for the NSE500.
+  minute_history_days: 365     # first download; afterwards each session is added after the close
+  minute_history_from: "2015-01-01"   # older history is then filled back to here, or as far as Kite has (about 2015)
+  overlap_days: 5               # re-fetched on each refresh to detect split/bonus adjustments
+  adjustment_tolerance_pct: 0.5
+
+backup:
+  time: "21:30"                 # after the 21:00 EOD run, so the backup includes its orders
+  keep_days: 30
+
+# Shown on the Login page with a one-tap copy button. Change it here and the
+# page updates automatically.
+screener_query: |
+  Sales growth > Sales growth 3Years AND
+  Profit growth > Profit growth 3Years AND
+  Price to Earning < Profit growth AND
+  Average return on equity 5Years > 10 AND
+  Debt to equity < 0.5 AND
+  Price to Earning > 0 AND
+  Sales growth > 0 AND
+  Profit growth > 0 AND
+  Market Capitalization > 5000
+
+# NSE capital-market trading holidays (weekdays only). Source: NSE holiday
+# calendar as published for 2026. Add next year's list when NSE publishes it;
+# the Overview screen warns when the calendar runs out.
+holidays:
+  "2026-01-15": "Municipal Corporation Election - Maharashtra"
+  "2026-01-26": "Republic Day"
+  "2026-03-03": "Holi"
+  "2026-03-26": "Shri Ram Navami"
+  "2026-03-31": "Shri Mahavir Jayanti"
+  "2026-04-03": "Good Friday"
+  "2026-04-14": "Dr. Baba Saheb Ambedkar Jayanti"
+  "2026-05-01": "Maharashtra Day"
+  "2026-05-28": "Bakri Id"
+  "2026-06-26": "Muharram"
+  "2026-09-14": "Ganesh Chaturthi"
+  "2026-10-02": "Mahatma Gandhi Jayanti"
+  "2026-10-20": "Dussehra"
+  "2026-11-10": "Diwali-Balipratipada"
+  "2026-11-24": "Prakash Gurpurb Sri Guru Nanak Dev"
+  "2026-12-25": "Christmas"
+holidays_valid_through: "2026-12-31"

@@ -1,0 +1,39 @@
+# Momentum Strategy v1 — spec section 6. Every number the strategy uses lives
+# here. A version tag is immutable: once stored in config_versions, editing
+# this file without a new tag makes the app refuse to start. Approved changes
+# create a new file (e.g. momentum_v1.1.yaml) through the Learning screen.
+
+version: momentum_v1
+timeframe: day
+side: long
+product: CNC
+
+signal:
+  min_change_pct: 3.0          # close >= previous close x 1.03
+  bb_period: 20
+  bb_std: 2.0                  # close >= upper Bollinger Band (20, 2)
+  atr_period: 14               # ATR(14) today > ATR(14) yesterday
+  adx_period: 14
+  adx_min: 20                  # ADX(14) > 20
+
+levels:
+  entry_trigger_buffer_pct: 0.5   # entry_trigger = signal_close x 1.005
+  entry_limit_buffer_pct: 0.5     # entry_limit   = entry_trigger x 1.005
+  stop_buffer_pct: 0.5            # stop          = signal_low x (1 - 0.005)
+  swing_lookback: 20              # lowest low of the 20 sessions ending on the signal day
+  target_extension: 2.0           # target = swing_low + 2.0 x (signal_high - swing_low)
+  min_rr: 1.5                     # RR uses entry_limit (worst-case fill)
+
+entry:
+  cancel_after_sessions: 2
+
+exits:
+  split_min_qty: 4                # qty >= 4: OCO, target leg sells floor(qty / 2)
+  stop_leg_limit_pct: 2.0         # stop leg limit = stop x 0.98
+  trail_buffer_pct: 0.5           # stop = max(stop, prior day low x (1 - 0.005))
+
+ranking:
+  rr_bands:                       # checked top-down, lower bound inclusive
+    - {band: A, min: 2.5}
+    - {band: B, min: 2.0}
+    - {band: C, min: 1.5}

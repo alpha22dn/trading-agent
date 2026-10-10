@@ -1,0 +1,26 @@
+# systemd service for the Trading Agent (installed by deploy/install.sh).
+# Starts at boot, restarts within 5 seconds if it ever stops, and gets 40 seconds to stop cleanly
+# (so the 1-second recorder can write what it holds and the next start knows the stop was clean).
+[Unit]
+Description=Trading Agent
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent
+Group=agent
+WorkingDirectory=/opt/trading-agent
+ExecStart=/opt/trading-agent/.venv/bin/python -m agent.cli serve
+Restart=always
+RestartSec=5
+TimeoutStopSec=40
+Environment=PYTHONUNBUFFERED=1
+# hardening: the agent only writes inside its own folder
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

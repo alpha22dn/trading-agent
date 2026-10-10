@@ -1,0 +1,36 @@
+# intraday_v1: strategy 'Intraday' created on the Strategies screen (2026-09-30). Immutable like every version; a further change creates a new version.
+
+kind: intraday_pullback
+timeframe: 5minute
+side: long
+product: CNC
+signal:
+  up_min_pct: 1.0
+  touch_pct: 0.1
+  ema_period: 20
+  window_start: 09:30
+  window_end: '14:30'
+universe:
+  watchlist: true
+  top_liquid: 50.0
+levels:
+  entry_trigger_buffer_pct: 0.05
+  entry_limit_buffer_pct: 0.2
+  stop_buffer_pct: 0.1
+  min_rr: 1.5
+entry:
+  cancel_at: '15:15'
+  cancel_after_sessions: 0
+exits:
+  split_min_qty: 1000000000
+  stop_leg_limit_pct: 2.0
+  trail_buffer_pct: 0.0
+ranking:
+  rr_bands:
+  - band: A
+    min: 2.5
+  - band: B
+    min: 2.0
+  - band: C
+    min: 1.5
+version: intraday_v1

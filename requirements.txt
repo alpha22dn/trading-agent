@@ -1,0 +1,18 @@
+# Runtime
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+websockets>=12
+python-multipart>=0.0.9
+pydantic-settings>=2.4,<3
+pyyaml>=6
+apscheduler>=3.10,<4
+kiteconnect>=5.0,<6
+pandas>=2.2
+numpy>=1.26
+requests>=2.31
+openpyxl>=3.1           # Screener results pasted into Excel
+tzdata>=2024.1        # timezone data; Windows has none built in
+
+# Tests
+pytest>=8
+httpx>=0.27
